@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Marketer's MacOS | Draggable Portfolios</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 30% 10%, #1e2a3a, #0a0f1c);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* macOS desktop area - where windows live */
+    .desktop {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* DOCK (fixed at bottom) */
+    .mac-dock {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(24px);
+      border-radius: 32px;
+      display: flex;
+      gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid rgba(255,255,255,0.6);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+
+    .dock-item {
+      background: transparent;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 30px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 14px;
+      color: #1c1c1e;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dock-item i {
+      font-size: 16px;
+    }
+
+    .dock-item:hover {
+      background: rgba(0, 0, 0, 0.1);
+      transform: translateY(-3px);
+    }
+
+    /* macOS Window styling */
+    .mac-window {
+      position: absolute;
+      background: rgba(245, 245, 250, 0.96);
+      backdrop-filter: blur(16px);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255,255,255,0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 280px;
+      min-height: 300px;
+      transition: box-shadow 0.1s;
+      z-index: 10;
+    }
+
+    .mac-window:active {
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Window header (draggable area) */
+    .window-header {
+      background: rgba(235, 235, 240, 0.85);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: grab;
+      user-select: none;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    .window-header:active {
+      cursor: grabbing;
+    }
+
+    .traffic {
+      display: flex;
+      gap: 8px;
+    }
+    .win-light {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      transition: 0.1s;
+    }
+    .close { background: #ff5f56; }
+    .minimize { background: #ffbd2e; }
+    .zoom { background: #27c93f; }
+
+    .window-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #2c2c2e;
+      background: rgba(0,0,0,0.04);
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: -0.2px;
+    }
+
+    /* Window content area */
+    .window-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .window-content::-webkit-scrollbar {
+      width: 6px;
+    }
+    .window-content::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.05);
+    }
+    .window-content::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+    }
+
+    /* resize handle */
+    .resize-handle {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 18px;
+      height: 18px;
+      cursor: nw-resize;
+      background: rgba(0,0,0,0.1);
+      border-radius: 0 0 16px 0;
+      z-index: 20;
+    }
+    .resize-handle:hover {
+      background: rgba(0,0,0,0.2);
+    }
+
+    /* inner styling for content */
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #1e2b3a, #2c3e50);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .portfolio-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .portfolio-item {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid #e2e8f0;
+    }
+    .portfolio-badge {
+      background: #eef2ff;
+      border-radius: 40px;
+      padding: 4px 12px;
+      font-size: 12px;
+      display: inline-block;
+      margin-top: 10px;
+    }
+    .blog-post {
+      background: rgba(255,255,245,0.7);
+      border-left: 4px solid #2c3e50;
+      padding: 14px;
+      margin-bottom: 16px;
+      border-radius: 12px;
+    }
+    .blog-post h3 {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .blog-meta {
+      font-size: 11px;
+      color: #5a6874;
+    }
+    .contact-form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    input, textarea {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-family: inherit;
+    }
+    button:not(.dock-item) {
+      background: #2c3e50;
+      border: none;
+      padding: 10px;
+      border-radius: 40px;
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .about-flex {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .avatar {
+      background: linear-gradient(145deg, #3a5e7a, #1d2f3f);
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      color: white;
+    }
+    .social-links a {
+      color: #2c3e50;
+      margin-right: 14px;
+      font-size: 20px;
+    }
+    footer {
+      font-size: 10px;
+      text-align: center;
+      margin-top: 20px;
+      color: #6c7a89;
+    }
+    .readmore-btn {
+      background: transparent !important;
+      color: #2c7da0 !important;
+      padding: 4px 0 !important;
+      font-size: 12px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+<div class="desktop" id="desktop"></div>
+<div class="mac-dock">
+  <button class="dock-item" data-win="aboutWin"><i class="fas fa-user"></i><span>About Me</span></button>
+  <button class="dock-item" data-win="portfolioWin"><i class="fas fa-briefcase"></i><span>Portfolio</span></button>
+  <button class="dock-item" data-win="contactWin"><i class="fas fa-envelope"></i><span>Contact</span></button>
+  <button class="dock-item" data-win="blogWin"><i class="fas fa-pen-fancy"></i><span>Blog</span></button>
+</div>
+
+<script>
+  // ---------- DATA (shared) ----------
+  let blogPosts = [
+    { id: 1, title: "Why Storytelling Wins in Digital Marketing", date: "April 10, 2026", summary: "Learn how authentic narratives boost engagement and build brand loyalty across social platforms.", fullContent: "Storytelling creates emotional connections. In modern marketing, it's the superpower that drives retention and brand recall. Use customer journey maps for best results." },
+    { id: 2, title: "TikTok vs. Reels: Where Should Marketers Focus?", date: "April 2, 2026", summary: "A data-driven comparison of engagement rates and algorithmic advantages for short-form content.", fullContent: "Short-form video dominates. TikTok offers organic reach, Instagram Reels integrates with ecommerce. Repurpose content but tailor per platform." },
+    { id: 3, title: "SEO Trends 2026: AI Overviews", date: "March 22, 2026", summary: "How marketing students can adapt to search generative experience and featured snippets.", fullContent: "Zero-click searches rising. Optimize for structured data and conversational queries. Build topical authority with pillar pages." }
+  ];
+
+  const portfolioItems = [
+    { name: "GlowUp Cosmetics", category: "Social Media Campaign", desc: "Increased engagement by 210% via UGC strategy." },
+    { name: "EcoBrew Coffee", category: "Brand Identity", desc: "Rebranded packaging & sustainability storytelling, sales +45%." },
+    { name: "CampusConnect", category: "Influencer Marketing", desc: "Micro-influencer program, 3k downloads in 2 weeks." },
+    { name: "Retail AI Analytics", category: "Marketing Research", desc: "Customer segmentation using Python & Tableau." }
+  ];
+
+  // Helper to render window content based on type
+  function renderWindowContent(winType, containerElement) {
+    if (winType === 'aboutWin') {
+      containerElement.innerHTML = `
+        <div class="about-flex">
+          <div class="avatar"><i class="fas fa-chart-line"></i></div>
+          <div><strong>Jordan Lee</strong><br>Marketing Student & Strategist</div>
+        </div>
+        <p style="margin: 16px 0;">🎓 Final-year Marketing major + Data Analytics minor. Passionate about brand psychology, digital campaigns, and user-centric storytelling. I've led 5+ student projects and interned at a growth agency.</p>
+        <p>✨ My approach: creativity + measurable results. This macOS-style interface brings modern design to life.</p>
+        <div class="social-links" style="margin-top: 16px;">
+          <a href="#"><i class="fab fa-linkedin"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-instagram"></i></a>
+        </div>
+        <footer>📍 San Francisco | jordan@marketingportfolio</footer>
+      `;
+    } 
+    else if (winType === 'portfolioWin') {
+      let html = `<h2><i class="fas fa-briefcase"></i> Selected Work</h2><div class="portfolio-grid">`;
+      portfolioItems.forEach(item => {
+        html += `<div class="portfolio-item"><h3>${item.name}</h3><span class="portfolio-badge">${item.category}</span><p style="margin-top: 10px; font-size:13px;">${item.desc}</p></div>`;
+      });
+      html += `</div><footer>⭐ Full portfolio & case studies available on request.</footer>`;
+      containerElement.innerHTML = html;
+    }
+    else if (winType === 'contactWin') {
+      containerElement.innerHTML = `
+        <h2><i class="fas fa-paper-plane"></i> Contact</h2>
+        <p style="margin-bottom: 16px;">Got a project or collab? Let’s talk marketing.</p>
+        <form id="contactFormInner" class="contact-form">
+          <input type="text" placeholder="Your name" id="contactNameInner" required>
+          <input type="email" placeholder="Email address" id="contactEmailInner" required>
+          <textarea rows="3" placeholder="Message..."></textarea>
+          <button type="submit">Send Message <i class="fas fa-arrow-right"></i></button>
+        </form>
+        <div class="social-links" style="margin-top: 18px; text-align:center;"><a href="#"><i class="fab fa-linkedin"></i></a> <a href="#"><i class="fab fa-instagram"></i></a> <a href="mailto:jordan@marketing.com"><i class="fas fa-envelope"></i></a></div>
+      `;
+      const form = containerElement.querySelector('#contactFormInner');
+      if(form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const name = document.getElementById('contactNameInner')?.value || 'friend';
+          alert(`✨ Thanks ${name}! Message sent (simulated). I'll reply within 24h.`);
+          form.reset();
+        });
+      }
+    }
+    else if (winType === 'blogWin') {
+      let blogHtml = `<h2><i class="fas fa-rss"></i> Marketing Blog</h2><div id="blogPostsContainer">`;
+      blogPosts.forEach(post => {
+        blogHtml += `
+          <div class="blog-post" data-id="${post.id}">
+            <h3>${escapeHtml(post.title)}</h3>
+            <div class="blog-meta">📅 ${post.date}</div>
+            <div class="blog-summary" id="sum-${post.id}">${escapeHtml(post.summary)}</div>
+            <div id="full-${post.id}" style="display:none; margin-top:8px; background:#fff; padding:8px; border-radius:10px;">${escapeHtml(post.fullContent)}</div>
+            <button class="readmore-btn toggle-blog" data-id="${post.id}" style="background:none; border:none; color:#2c7da0; cursor:pointer; margin-top:6px;">Read more →</button>
+          </div>
+        `;
+      });
+      blogHtml += `<button id="demoNewPostBtn" style="margin-top: 12px; background:#3a5e7a; width:100%;"><i class="fas fa-plus"></i> New Article (Demo)</button><footer>✍️ Thoughts from a marketing student</footer></div>`;
+      containerElement.innerHTML = blogHtml;
+      
+      // attach toggle listeners
+      containerElement.querySelectorAll('.toggle-blog').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = btn.getAttribute('data-id');
+          const fullDiv = containerElement.querySelector(`#full-${id}`);
+          const summaryDiv = containerElement.querySelector(`#sum-${id}`);
+          if(fullDiv.style.display === 'none') {
+            fullDiv.style.display = 'block';
+            btn.textContent = 'Show less ↑';
+          } else {
+            fullDiv.style.display = 'none';
+            btn.textContent = 'Read more →';
+          }
+        });
+      });
+      const newBtn = containerElement.querySelector('#demoNewPostBtn');
+      if(newBtn) {
+        newBtn.addEventListener('click', () => {
+          const newId = Date.now();
+          const newTitle = "How to Use ChatGPT for Market Research (Student Guide)";
+          const newDate = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+          const newSummary = "Leverage AI tools to analyze consumer sentiment and generate personas ethically.";
+          const newContent = "AI won't replace marketers, but marketers using AI will. Learn prompt engineering for surveys and competitor analysis — a 2026 essential skill.";
+          blogPosts.push({ id: newId, title: newTitle, date: newDate, summary: newSummary, fullContent: newContent });
+          renderWindowContent('blogWin', containerElement);
+        });
+      }
+    }
+  }
+
+  function escapeHtml(str) {
+    if(!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if(m === '&') return '&amp;';
+      if(m === '<') return '&lt;';
+      if(m === '>') return '&gt;';
+      return m;
+    });
+  }
+
+  // ----- Window Manager (draggable, resizable, z-index) -----
+  let windows = [];          // store references to DOM elements
+  let highestZ = 100;
+
+  // create a new floating window
+  function createWindow(winId, title, defaultX, defaultY, defaultW, defaultH) {
+    const desktop = document.getElementById('desktop');
+    const existing = document.getElementById(winId);
+    if (existing) {
+      // bring to front
+      existing.style.zIndex = ++highestZ;
+      return existing;
+    }
+    
+    const winDiv = document.createElement('div');
+    winDiv.className = 'mac-window';
+    winDiv.id = winId;
+    winDiv.style.left = `${defaultX}px`;
+    winDiv.style.top = `${defaultY}px`;
+    winDiv.style.width = `${defaultW}px`;
+    winDiv.style.height = `${defaultH}px`;
+    winDiv.style.zIndex = ++highestZ;
+    
+    // header
+    const header = document.createElement('div');
+    header.className = 'window-header';
+    header.innerHTML = `
+      <div class="traffic">
+        <div class="win-light close"></div>
+        <div class="win-light minimize"></div>
+        <div class="win-light zoom"></div>
+      </div>
+      <div class="window-title">${title}</div>
+    `;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'window-content';
+    
+    winDiv.appendChild(header);
+    winDiv.appendChild(contentDiv);
+    
+    // resize handle
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    winDiv.appendChild(resizeHandle);
+    
+    desktop.appendChild(winDiv);
+    
+    // render dynamic content based on winId
+    renderWindowContent(winId, contentDiv);
+    
+    // ----- Dragging logic -----
+    let isDragging = false;
+    let dragOffsetX = 0, dragOffsetY = 0;
+    
+    header.addEventListener('mousedown', (e) => {
+      if (e.target.classList && (e.target.classList.contains('win-light') || e.target.closest('.traffic'))) return;
+      isDragging = true;
+      dragOffsetX = e.clientX - winDiv.offsetLeft;
+      dragOffsetY = e.clientY - winDiv.offsetTop;
+      winDiv.style.zIndex = ++highestZ;
+      e.preventDefault();
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      let newLeft = e.clientX - dragOffsetX;
+      let newTop = e.clientY - dragOffsetY;
+      // boundaries (optional)
+      const maxX = window.innerWidth - winDiv.offsetWidth;
+      const maxY = window.innerHeight - 50; // leave dock space
+      newLeft = Math.min(Math.max(0, newLeft), maxX);
+      newTop = Math.min(Math.max(0, newTop), maxY);
+      winDiv.style.left = `${newLeft}px`;
+      winDiv.style.top = `${newTop}px`;
+    });
+    
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+    
+    // ----- Resizing logic -----
+    let isResizing = false;
+    let startX, startY, startW, startH;
+    resizeHandle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startW = winDiv.offsetWidth;
+      startH = winDiv.offsetHeight;
+      winDiv.style.zIndex = ++highestZ;
+      e.preventDefault();
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      let newW = Math.max(320, startW + dx);
+      let newH = Math.max(280, startH + dy);
+      winDiv.style.width = `${newW}px`;
+      winDiv.style.height = `${newH}px`;
+    });
+    
+    window.addEventListener('mouseup', () => {
+      isResizing = false;
+    });
+    
+    // bring to front on click
+    winDiv.addEventListener('mousedown', () => {
+      winDiv.style.zIndex = ++highestZ;
+    });
+    
+    // traffic light: close button removes window
+    const closeBtn = header.querySelector('.close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        winDiv.remove();
+        // remove from windows array if needed
+        const idx = windows.indexOf(winDiv);
+        if (idx !== -1) windows.splice(idx,1);
+      });
+    }
+    // minimize: just hide (toggle)
+    const minimizeBtn = header.querySelector('.minimize');
+    if (minimizeBtn) {
+      minimizeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        winDiv.style.display = winDiv.style.display === 'none' ? 'flex' : 'none';
+        if (winDiv.style.display === 'none') {
+          minimizeBtn.style.opacity = '0.6';
+        } else {
+          minimizeBtn.style.opacity = '1';
+        }
+      });
+    }
+    // zoom: toggle between small and larger size (just a nice effect)
+    const zoomBtn = header.querySelector('.zoom');
+    if (zoomBtn) {
+      zoomBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (winDiv.style.width === '800px') {
+          winDiv.style.width = '460px';
+          winDiv.style.height = '420px';
+        } else {
+          winDiv.style.width = '800px';
+          winDiv.style.height = '560px';
+        }
+      });
+    }
+    
+    windows.push(winDiv);
+    return winDiv;
+  }
+  
+  // default window positions & sizes (cascading)
+  function initWindows() {
+    createWindow('aboutWin', '👤 About Me', 70, 90, 460, 400);
+    createWindow('portfolioWin', '📁 Portfolio', 540, 70, 500, 440);
+    createWindow('contactWin', '✉️ Contact', 100, 480, 420, 380);
+    createWindow('blogWin', '📝 Blog', 570, 500, 540, 460);
+  }
+  
+  // make sure existing window is opened (if closed, recreate or show)
+  function showOrCreateWindow(winId, title, x, y, w, h) {
+    let win = document.getElementById(winId);
+    if (win) {
+      win.style.display = 'flex';
+      win.style.zIndex = ++highestZ;
+      return win;
+    } else {
+      // compute new cascade position if needed, but use stored positions based on existing windows count
+      let newX = (windows.length * 30 + 60) % (window.innerWidth - 300);
+      let newY = (windows.length * 40 + 70) % (window.innerHeight - 300);
+      if (newX < 20) newX = 80;
+      if (newY < 40) newY = 80;
+      return createWindow(winId, title, newX, newY, w, h);
+    }
+  }
+  
+  // dock event handlers
+  document.querySelectorAll('.dock-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const winId = btn.getAttribute('data-win');
+      if (winId === 'aboutWin') showOrCreateWindow('aboutWin', '👤 About Me', 90, 100, 460, 400);
+      else if (winId === 'portfolioWin') showOrCreateWindow('portfolioWin', '📁 Portfolio', 480, 70, 500, 440);
+      else if (winId === 'contactWin') showOrCreateWindow('contactWin', '✉️ Contact', 130, 460, 420, 390);
+      else if (winId === 'blogWin') showOrCreateWindow('blogWin', '📝 Blog', 580, 480, 540, 480);
+    });
+  });
+  
+  // call init to create default floating windows
+  initWindows();
+  
+  // extra: handle resize of entire window to keep windows within view (optional)
+  window.addEventListener('resize', () => {
+    windows.forEach(win => {
+      if (win.style.display !== 'none') {
+        let left = parseInt(win.style.left);
+        let top = parseInt(win.style.top);
+        let maxLeft = window.innerWidth - win.offsetWidth;
+        let maxTop = window.innerHeight - 70;
+        if (left > maxLeft) win.style.left = `${Math.max(10, maxLeft)}px`;
+        if (top > maxTop) win.style.top = `${Math.max(10, maxTop)}px`;
+      }
+    });
+  });
+</script>
+</body>
+</html>
