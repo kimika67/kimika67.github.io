@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>sylvia's portfolio (1.0)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 30% 10%, #1e2a3a, #0a0f1c);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* --- LOADING OVERLAY (fullscreen macOS boot style) --- */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 30% 20%, #1a2632, #0a0e17);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      backdrop-filter: blur(2px);
+      transition: opacity 0.6s ease-out, visibility 0.6s ease-out;
+    }
+
+    .loading-content {
+      text-align: center;
+      color: white;
+    }
+
+    .apple-logo {
+      font-size: 56px;
+      margin-bottom: 28px;
+      opacity: 0.9;
+      filter: drop-shadow(0 0 8px rgba(255,255,240,0.3));
+    }
+
+    .loading-bar-container {
+      width: 280px;
+      height: 4px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 20px;
+      overflow: hidden;
+      margin: 20px auto;
+    }
+
+    .loading-bar {
+      width: 0%;
+      height: 100%;
+      background: white;
+      border-radius: 20px;
+      transition: width 0.12s linear;
+      box-shadow: 0 0 8px #ffffffaa;
+    }
+
+    .loading-text {
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      font-weight: 400;
+      margin-top: 12px;
+      opacity: 0.8;
+    }
+
+    /* main desktop (hidden until loading complete) */
+    .desktop {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .desktop.visible {
+      opacity: 1;
+    }
+
+    /* DOCK (fixed at bottom) */
+    .mac-dock {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(24px);
+      border-radius: 32px;
+      display: flex;
+      gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid rgba(255,255,255,0.6);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+
+    .dock-item {
+      background: transparent;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 30px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 14px;
+      color: #1c1c1e;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dock-item i {
+      font-size: 16px;
+    }
+
+    .dock-item:hover {
+      background: rgba(0, 0, 0, 0.1);
+      transform: translateY(-3px);
+    }
+
+    /* macOS Window styling */
+    .mac-window {
+      position: absolute;
+      background: rgba(245, 245, 250, 0.96);
+      backdrop-filter: blur(16px);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255,255,255,0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 280px;
+      min-height: 300px;
+      transition: box-shadow 0.1s;
+      z-index: 10;
+    }
+
+    .mac-window:active {
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    }
+
+    /* minimized state (hidden but remembered) */
+    .mac-window.minimized {
+      display: none;
+    }
+
+    /* Window header (draggable area) */
+    .window-header {
+      background: rgba(235, 235, 240, 0.85);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: grab;
+      user-select: none;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    .window-header:active {
+      cursor: grabbing;
+    }
+
+    .traffic {
+      display: flex;
+      gap: 8px;
+    }
+    .win-light {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      transition: 0.1s;
+      cursor: pointer;
+    }
+    .close { background: #ff5f56; }
+    .minimize { background: #ffbd2e; }
+    .zoom { background: #27c93f; }
+
+    .window-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #2c2c2e;
+      background: rgba(0,0,0,0.04);
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: -0.2px;
+    }
+
+    /* Window content area */
+    .window-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .window-content::-webkit-scrollbar {
+      width: 6px;
+    }
+    .window-content::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.05);
+    }
+    .window-content::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+    }
+
+    /* resize handle */
+    .resize-handle {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 18px;
+      height: 18px;
+      cursor: nw-resize;
+      background: rgba(0,0,0,0.1);
+      border-radius: 0 0 16px 0;
+      z-index: 20;
+    }
+    .resize-handle:hover {
+      background: rgba(0,0,0,0.2);
+    }
+
+    /* inner styling for content */
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #1e2b3a, #2c3e50);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .portfolio-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .portfolio-item {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid #e2e8f0;
+    }
+    .portfolio-badge {
+      background: #eef2ff;
+      border-radius: 40px;
+      padding: 4px 12px;
+      font-size: 12px;
+      display: inline-block;
+      margin-top: 10px;
+    }
+    .blog-post {
+      background: rgba(255,255,245,0.7);
+      border-left: 4px solid #2c3e50;
+      padding: 14px;
+      margin-bottom: 16px;
+      border-radius: 12px;
+    }
+    .blog-post h3 {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .blog-meta {
+      font-size: 11px;
+      color: #5a6874;
+    }
+    .contact-form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    input, textarea {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-family: inherit;
+    }
+    button:not(.dock-item) {
+      background: #2c3e50;
+      border: none;
+      padding: 10px;
+      border-radius: 40px;
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .about-flex {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .avatar {
+      background: linear-gradient(145deg, #3a5e7a, #1d2f3f);
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      color: white;
+    }
+    .social-links a {
+      color: #2c3e50;
+      margin-right: 14px;
+      font-size: 20px;
+    }
+    footer {
+      font-size: 10px;
+      text-align: center;
+      margin-top: 20px;
+      color: #6c7a89;
+    }
+    .readmore-btn {
+      background: transparent !important;
+      color: #2c7da0 !important;
+      padding: 4px 0 !important;
+      font-size: 12px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+<!-- macOS Loading Screen -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-content">
+    <div class="apple-logo">
+      <i class="fab fa-apple"></i>
+    </div>
+    <div class="loading-bar-container">
+      <div class="loading-bar" id="loadingBarFill"></div>
+    </div>
+    <div class="loading-text" id="loadingStatus">Starting up...</div>
+  </div>
+</div>
+
+<div class="desktop" id="desktopContainer">
+  <!-- Windows will be injected here -->
+</div>
+
+<div class="mac-dock" id="mainDock" style="visibility: hidden;">
+  <button class="dock-item" data-win="aboutWin"><i class="fas fa-user"></i><span>About Me</span></button>
+  <button class="dock-item" data-win="portfolioWin"><i class="fas fa-briefcase"></i><span>Portfolio</span></button>
+  <button class="dock-item" data-win="contactWin"><i class="fas fa-envelope"></i><span>Contact</span></button>
+  <button class="dock-item" data-win="blogWin"><i class="fas fa-pen-fancy"></i><span>Blog</span></button>
+</div>
+
+<script>
+  // ---------- DATA (shared) ----------
+  let blogPosts = [
+    { id: 1, title: "'26 march diaries'", date: "31 March, 2026", summary: "(wip)", fullContent: "(wip)" },
+    { id: 2, title: "'26 february diaries <3'", date: "28 February, 2026", summary: "(wip)", fullContent: "(wip)" },
+    { id: 3, title: "'26 january diaries <3", date: "31 January, 2026", summary: "'new year, new me! ", fullContent: "i spent a great deal of my christmas on an airplane, and i've welcomed the new year in kobe, japan. my new internship, as well as my new sharehouse lifestyle has just started. of course, it's incredibly nerve-wracking, but at the same time, it's also exciting!" }
+  ];
+
+  const portfolioItems = [
+    { name: "StarHub", category: "AKA Asia", desc: "I participated and led video shoot sessions, engaged in media monitoring efforts, communicating PR value accumulated through the agency's various marketing activities with the brand." },
+    { name: "Spotify", category: "AKA Asia", desc: "For the Spotify account, I engaged with reporting on behalf of every office in the APAC region regarding Spotify's emerging artists, relevant news coverage, and campaign results in various countries across the region." },
+    { name: "VIU", category: "AKA Asia", desc: "As an AKA Asia intern, I was entrusted with various tasks on behalf of one of their clients: VIU. VIU, as the organiser of the first Waterbomb festival in Singapore, engaged in various communications activities. For this account, I supported influencer marketing, event management, media relations, as well as press release dissemination." },
+    { name: "GoNetZero Launch", category: "Sembcorp Industries", desc: "During my time as an intern at Sembcorp Indusries, I supported their transition towards sustainable energy, contributing to how it would be communicated to its internal and external stakeholders. One large part of it would be the GoNetZero platform, which I presented on at the pre-launch phase, as well as provided creative input for." }
+    { name: "SEO Content Writing", category: "SmartSites", desc: "Over approximately a year of working with the agency, I had written, edited, and SEO-optimised website pages and blog articles for over 90 clients. Through this exposure, I learned the ins and outs of SEO optimisation and what it took to write pages that hit the top on search engine results." },
+  ];
+
+  // Helper to render window content based on type
+  function renderWindowContent(winType, containerElement) {
+    if (winType === 'aboutWin') {
+      containerElement.innerHTML = `
+        <div class="about-flex">
+          <div class="avatar"><i class="fas fa-chart-line"></i></div>
+          <div><strong>Sylvia Goh</strong><br>Marketing Student, Chronic Intern</div>
+        </div>
+        <p style="margin: 16px 0;">Penultimate-year BSc in Marketing student. Passionate about storytelling, pitching, and the occasional coffee chat.</p>
+        <p>Previously @ AKA Asia, Impossible Marketing, Sembcorp Industries</p>
+        <div class="social-links" style="margin-top: 16px;">
+          <a href="https://www.linkedin.com/in/gohsylvia/"><i class="fab fa-linkedin"></i></a>
+          <a href="https://www.instagram.com/sylvntual/"><i class="fab fa-instagram"></i></a>
+          <a href="https://letterboxd.com/riruru/"><i class="fa fa-film"></i></a>
+        </div>
+        <footer>📍 Singapore | sylvntual@gmail.com</footer>
+      `;
+    } 
+    else if (winType === 'portfolioWin') {
+      let html = `<h2><i class="fas fa-briefcase"></i> Selected Work</h2><div class="portfolio-grid">`;
+      portfolioItems.forEach(item => {
+        html += `<div class="portfolio-item"><h3>${escapeHtml(item.name)}</h3><span class="portfolio-badge">${escapeHtml(item.category)}</span><p style="margin-top: 10px; font-size:13px;">${escapeHtml(item.desc)}</p></div>`;
+      });
+      html += `</div><footer>Full portfolio & case studies available on request.</footer>`;
+      containerElement.innerHTML = html;
+    }
+    else if (winType === 'contactWin') {
+      containerElement.innerHTML = `
+        <h2><i class="fas fa-paper-plane"></i> Contact</h2>
+        <p style="margin-bottom: 16px;">Let's get in touch!</p>
+        <form id="contactFormInner" class="contact-form">
+          <input type="text" placeholder="Your name" id="contactNameInner" required>
+          <input type="email" placeholder="Email address" id="contactEmailInner" required>
+          <textarea rows="3" placeholder="Message..."></textarea>
+          <button type="submit">Send Message <i class="fas fa-arrow-right"></i></button>
+        </form>
+        <div class="social-links" style="margin-top: 18px; text-align:center;"><a href="https://www.linkedin.com/in/gohsylvia/"><i class="fab fa-linkedin"></i></a> <a href="mailto:sylvntual@gmail.com"><i class="fas fa-envelope"></i></a></div>
+      `;
+      const form = containerElement.querySelector('#contactFormInner');
+      if(form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const name = document.getElementById('contactNameInner')?.value || 'friend';
+          alert(`Thanks ${name}! Message sent. Will get back to you soon!.`);
+          form.reset();
+        });
+      }
+    }
+    else if (winType === 'blogWin') {
+      let blogHtml = `<h2><i class="fas fa-rss"></i>sylvia's mind palace V_V</h2><div id="blogPostsContainer">`;
+      blogPosts.forEach(post => {
+        blogHtml += `
+          <div class="blog-post" data-id="${post.id}">
+            <h3>${escapeHtml(post.title)}</h3>
+            <div class="blog-meta">📅 ${post.date}</div>
+            <div class="blog-summary" id="sum-${post.id}">${escapeHtml(post.summary)}</div>
+            <div id="full-${post.id}" style="display:none; margin-top:8px; background:#fff; padding:8px; border-radius:10px;">${escapeHtml(post.fullContent)}</div>
+            <button class="readmore-btn toggle-blog" data-id="${post.id}" style="background:none; border:none; color:#2c7da0; cursor:pointer; margin-top:6px;">Read more →</button>
+          </div>
+        `;
+      });
+      blogHtml += `<button id="demoNewPostBtn" style="margin-top: 12px; background:#3a5e7a; width:100%;"><i class="fas fa-plus"></i> New Article (Demo)</button><footer>✍️ Thoughts from a marketing student</footer></div>`;
+      containerElement.innerHTML = blogHtml;
+      
+      // attach toggle listeners
+      containerElement.querySelectorAll('.toggle-blog').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = btn.getAttribute('data-id');
+          const fullDiv = containerElement.querySelector(`#full-${id}`);
+          const summaryDiv = containerElement.querySelector(`#sum-${id}`);
+          if(fullDiv.style.display === 'none') {
+            fullDiv.style.display = 'block';
+            btn.textContent = 'Show less ↑';
+          } else {
+            fullDiv.style.display = 'none';
+            btn.textContent = 'Read more →';
+          }
+        });
+      });
+      const newBtn = containerElement.querySelector('#demoNewPostBtn');
+      if(newBtn) {
+        newBtn.addEventListener('click', () => {
+          const newId = Date.now();
+          const newTitle = "How to Use ChatGPT for Market Research (Student Guide)";
+          const newDate = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+          const newSummary = "Leverage AI tools to analyze consumer sentiment and generate personas ethically.";
+          const newContent = "AI won't replace marketers, but marketers using AI will. Learn prompt engineering for surveys and competitor analysis — a 2026 essential skill.";
+          blogPosts.push({ id: newId, title: newTitle, date: newDate, summary: newSummary, fullContent: newContent });
+          renderWindowContent('blogWin', containerElement);
+        });
+      }
+    }
+  }
+
+  function escapeHtml(str) {
+    if(!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if(m === '&') return '&amp;';
+      if(m === '<') return '&lt;';
+      if(m === '>') return '&gt;';
+      return m;
+    });
+  }
+
+  // ----- Window Manager (draggable, resizable, z-index) -----
+  let windows = [];          
+  let highestZ = 100;
+  let allWindowsRef = {};   // track by id
+
+  // create a new floating window
+  function createWindow(winId, title, defaultX, defaultY, defaultW, defaultH, startMinimized = false) {
+    const desktop = document.getElementById('desktopContainer');
+    const existing = document.getElementById(winId);
+    if (existing) {
+      existing.style.zIndex = ++highestZ;
+      if (existing.classList.contains('minimized')) {
+        existing.classList.remove('minimized');
+      }
+      return existing;
+    }
+    
+    const winDiv = document.createElement('div');
+    winDiv.className = 'mac-window';
+    if (startMinimized) winDiv.classList.add('minimized');
+    winDiv.id = winId;
+    winDiv.style.left = `${defaultX}px`;
+    winDiv.style.top = `${defaultY}px`;
+    winDiv.style.width = `${defaultW}px`;
+    winDiv.style.height = `${defaultH}px`;
+    winDiv.style.zIndex = ++highestZ;
+    
+    // header
+    const header = document.createElement('div');
+    header.className = 'window-header';
+    header.innerHTML = `
+      <div class="traffic">
+        <div class="win-light close"></div>
+        <div class="win-light minimize"></div>
+        <div class="win-light zoom"></div>
+      </div>
+      <div class="window-title">${title}</div>
+    `;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'window-content';
+    
+    winDiv.appendChild(header);
+    winDiv.appendChild(contentDiv);
+    
+    // resize handle
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    winDiv.appendChild(resizeHandle);
+    
+    desktop.appendChild(winDiv);
+    
+    // render dynamic content based on winId
+    renderWindowContent(winId, contentDiv);
+    
+    // ----- Dragging logic -----
+    let isDragging = false;
+    let dragOffsetX = 0, dragOffsetY = 0;
+    
+    header.addEventListener('mousedown', (e) => {
+      if (e.target.classList && (e.target.classList.contains('win-light') || e.target.closest('.traffic'))) return;
+      isDragging = true;
+      dragOffsetX = e.clientX - winDiv.offsetLeft;
+      dragOffsetY = e.clientY - winDiv.offsetTop;
+      winDiv.style.zIndex = ++highestZ;
+      e.preventDefault();
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      let newLeft = e.clientX - dragOffsetX;
+      let newTop = e.clientY - dragOffsetY;
+      const maxX = window.innerWidth - winDiv.offsetWidth;
+      const maxY = window.innerHeight - 50;
+      newLeft = Math.min(Math.max(0, newLeft), maxX);
+      newTop = Math.min(Math.max(0, newTop), maxY);
+      winDiv.style.left = `${newLeft}px`;
+      winDiv.style.top = `${newTop}px`;
+    });
+    
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+    
+    // ----- Resizing logic -----
+    let isResizing = false;
+    let startX, startY, startW, startH;
+    resizeHandle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startW = winDiv.offsetWidth;
+      startH = winDiv.offsetHeight;
+      winDiv.style.zIndex = ++highestZ;
+      e.preventDefault();
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      let newW = Math.max(320, startW + dx);
+      let newH = Math.max(280, startH + dy);
+      winDiv.style.width = `${newW}px`;
+      winDiv.style.height = `${newH}px`;
+    });
+    
+    window.addEventListener('mouseup', () => {
+      isResizing = false;
+    });
+    
+    // bring to front on click
+    winDiv.addEventListener('mousedown', () => {
+      winDiv.style.zIndex = ++highestZ;
+    });
+    
+    // traffic light: close button removes window
+    const closeBtn = header.querySelector('.close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        winDiv.remove();
+        const idx = windows.indexOf(winDiv);
+        if (idx !== -1) windows.splice(idx,1);
+        if (allWindowsRef[winId]) delete allWindowsRef[winId];
+      });
+    }
+    // minimize: toggle minimized class
+    const minimizeBtn = header.querySelector('.minimize');
+    if (minimizeBtn) {
+      minimizeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        winDiv.classList.toggle('minimized');
+      });
+    }
+    // zoom: toggle size
+    const zoomBtn = header.querySelector('.zoom');
+    if (zoomBtn) {
+      zoomBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (winDiv.style.width === '800px') {
+          winDiv.style.width = '460px';
+          winDiv.style.height = '420px';
+        } else {
+          winDiv.style.width = '800px';
+          winDiv.style.height = '560px';
+        }
+      });
+    }
+    
+    windows.push(winDiv);
+    allWindowsRef[winId] = winDiv;
+    return winDiv;
+  }
+  
+  // function to show or restore a window (if minimized, unminimize; if closed, recreate)
+  function showOrCreateWindow(winId, title, x, y, w, h) {
+    let win = document.getElementById(winId);
+    if (win) {
+      if (win.classList.contains('minimized')) {
+        win.classList.remove('minimized');
+      }
+      win.style.zIndex = ++highestZ;
+      return win;
+    } else {
+      let newX = (windows.length * 30 + 60) % (window.innerWidth - 300);
+      let newY = (windows.length * 40 + 70) % (window.innerHeight - 300);
+      if (newX < 20) newX = 80;
+      if (newY < 40) newY = 80;
+      return createWindow(winId, title, newX, newY, w, h, false);
+    }
+  }
+  
+  // --- LOADING SIMULATION with startup configuration: ONLY About window open, others minimized ---
+  function simulateLoading() {
+    let progress = 0;
+    const loadingBar = document.getElementById('loadingBarFill');
+    const statusText = document.getElementById('loadingStatus');
+    const interval = setInterval(() => {
+      progress += Math.floor(Math.random() * 12) + 3;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+        statusText.innerText = "Ready. Welcome!";
+        setTimeout(() => {
+          // hide loading overlay and show desktop + dock
+          const overlay = document.getElementById('loadingOverlay');
+          overlay.style.opacity = '0';
+          setTimeout(() => {
+            overlay.style.visibility = 'hidden';
+            overlay.style.display = 'none';
+          }, 600);
+          const desktopElem = document.getElementById('desktopContainer');
+          desktopElem.classList.add('visible');
+          const dockElem = document.getElementById('mainDock');
+          dockElem.style.visibility = 'visible';
+        }, 400);
+      }
+      if (loadingBar) loadingBar.style.width = progress + '%';
+      if (progress < 30) statusText.innerText = "Loading macOS components...";
+      else if (progress < 70) statusText.innerText = "Loading portfolio data & modules...";
+      else statusText.innerText = "Almost there, preparing workspace...";
+    }, 70);
+  }
+  
+  // Initialize windows at startup: ONLY About Me is open, others minimized (minimized class)
+  function initWindowsWithMinimized() {
+    // about window: visible, no minimized class
+    createWindow('aboutWin', '👤 About Me', 80, 90, 480, 420, false);
+    // portfolio, contact, blog windows: start minimized
+    createWindow('portfolioWin', '📁 Portfolio', 540, 70, 520, 450, true);
+    createWindow('contactWin', '✉️ Contact', 120, 480, 440, 400, true);
+    createWindow('blogWin', '📝 Blog', 590, 490, 560, 480, true);
+  }
+  
+  // set dock event listeners
+  function bindDockEvents() {
+    document.querySelectorAll('.dock-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const winId = btn.getAttribute('data-win');
+        if (winId === 'aboutWin') showOrCreateWindow('aboutWin', '👤 About Me', 100, 100, 480, 420);
+        else if (winId === 'portfolioWin') showOrCreateWindow('portfolioWin', '📁 Portfolio', 480, 70, 520, 450);
+        else if (winId === 'contactWin') showOrCreateWindow('contactWin', '✉️ Contact', 150, 460, 440, 400);
+        else if (winId === 'blogWin') showOrCreateWindow('blogWin', '📝 Blog', 580, 480, 560, 480);
+      });
+    });
+  }
+
+  // resize windows boundaries
+  window.addEventListener('resize', () => {
+    windows.forEach(win => {
+      if (!win.classList.contains('minimized')) {
+        let left = parseInt(win.style.left);
+        let top = parseInt(win.style.top);
+        let maxLeft = window.innerWidth - win.offsetWidth;
+        let maxTop = window.innerHeight - 70;
+        if (left > maxLeft) win.style.left = `${Math.max(10, maxLeft)}px`;
+        if (top > maxTop) win.style.top = `${Math.max(10, maxTop)}px`;
+      }
+    });
+  });
+
+  // start everything: first init minimized windows, then loading bar
+  initWindowsWithMinimized();
+  bindDockEvents();
+  simulateLoading();
+</script>
+</body>
+</html>
